@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lindenau Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-code">EDLX</span><span class="brand-name">Lindenau Control</span></div>
+      <div class="atis" id="atis"></div>
+      <div class="clock"><span id="clock">--:--:--</span><span id="shiftLeft" class="muted"></span></div>
+      <div class="score"><span class="muted">Punkte</span> <b id="score">0</b></div>
+      <div class="speed" id="speed">
+        <button data-speed="0" title="Pause (Leertaste)">❚❚</button>
+        <button data-speed="1" class="on">1×</button>
+        <button data-speed="2">2×</button>
+        <button data-speed="4">4×</button>
+      </div>
+      <div class="tools">
+        <button id="btnFlows" title="Standard-Rollrichtungen ein/aus">Rollrichtungen</button>
+        <button id="btnTts" title="Sprachausgabe der Piloten">Sprache aus</button>
+        <button id="btnHelp" title="Befehle und Bedienung (F1)">Hilfe</button>
+      </div>
+    </header>
+
+    <aside class="left">
+      <div class="panel-head"><h2>Flüge</h2><span id="roleInfo" class="muted"></span></div>
+      <div id="flightList" class="flightlist"></div>
+    </aside>
+
+    <main class="mapwrap">
+      <canvas id="map"></canvas>
+      <div class="mapbtns">
+        <button data-view="all">Gesamt</button>
+        <button data-view="north">Nord</button>
+        <button data-view="apron">Vorfeld</button>
+        <button data-view="south">Süd</button>
+      </div>
+      <div id="toast" class="toast" hidden></div>
+      <div id="tutorial" class="tutorial" hidden></div>
+    </main>
+
+    <aside class="right">
+      <div id="detail" class="detail"><p class="empty">Wähle ein Flugzeug in der Liste oder auf der Karte.</p></div>
+    </aside>
+
+    <section class="bottom">
+      <div id="radio" class="radio" aria-live="polite"></div>
+      <form id="cmdForm" class="cmd" autocomplete="off">
+        <span id="cmdTarget" class="cmd-target">—</span>
+        <input id="cmd" type="text" spellcheck="false" placeholder="Befehl tippen, z. B. LNX427 TX N8 VIA G Z B  (Enter zum Senden, F1 für Hilfe)">
+        <button type="submit">Senden</button>
+      </form>
+      <div id="cmdHint" class="cmd-hint"></div>
+    </section>
+  </div>
+
+  <!-- Startbildschirm -->
+  <div id="start" class="modal">
+    <div class="modal-card start-card">
+      <div class="start-head">
+        <div>
+          <h1>Lindenau Control</h1>
+          <p class="lead">Du übernimmst Delivery und Ground am Flughafen Lindenau (EDLX): zwei Parallelbahnen, zwei Terminals, viel Verkehr. Tower und Anflug laufen in dieser Etappe automatisch.</p>
+        </div>
+        <svg class="start-art" viewBox="0 0 220 120" aria-hidden="true">
+          <rect x="0" y="0" width="220" height="120" rx="6" fill="#6f9450"/>
+          <rect x="10" y="12" width="200" height="12" fill="#3f4247"/><rect x="10" y="96" width="200" height="12" fill="#3f4247"/>
+          <rect x="20" y="40" width="180" height="40" fill="#b7b6b0"/>
+          <rect x="35" y="50" width="65" height="20" fill="#d8dbdf"/><rect x="120" y="50" width="65" height="20" fill="#d8dbdf"/>
+          <path d="M10 34 H210 M10 86 H210" stroke="#f2c230" stroke-width="1.2"/>
+          <g fill="#fff"><path d="M60 44 l3 -6 l3 6 l-3 -1z"/><path d="M150 76 l3 6 l3 -6 l-3 1z"/></g>
+        </svg>
+      </div>
+      <div class="opts">
+        <fieldset><legend>Delivery</legend>
+          <label><input type="radio" name="del" value="player" checked> Ich</label>
+          <label><input type="radio" name="del" value="ai"> KI</label></fieldset>
+        <fieldset><legend>Ground</legend>
+          <label><input type="radio" name="gnd" value="player" checked> Ich</label>
+          <label><input type="radio" name="gnd" value="ai"> KI</label></fieldset>
+        <fieldset><legend>Verkehr</legend>
+          <label><input type="radio" name="dens" value="20"> Ruhig</label>
+          <label><input type="radio" name="dens" value="32" checked> Normal</label>
+          <label><input type="radio" name="dens" value="48"> Spitze</label></fieldset>
+        <fieldset><legend>Schichtbeginn</legend>
+          <label><input type="radio" name="clock" value="23400"> 06:30</label>
+          <label><input type="radio" name="clock" value="43200" checked> 12:00</label>
+          <label><input type="radio" name="clock" value="58800"> 16:20</label></fieldset>
+        <fieldset><legend>Wetter</legend>
+          <label><input type="radio" name="wx" value="random" checked> Zufall</label>
+          <label><input type="radio" name="wx" value="clear"> Klar</label>
+          <label><input type="radio" name="wx" value="fog"> Nebel</label>
+          <label><input type="radio" name="wx" value="windshift"> Winddreher</label></fieldset>
+        <fieldset><legend>Schichtlänge</legend>
+          <label><input type="radio" name="dur" value="1800"> 30 min</label>
+          <label><input type="radio" name="dur" value="2700" checked> 45 min</label>
+          <label><input type="radio" name="dur" value="3600"> 60 min</label></fieldset>
+        <fieldset><legend>Pilotenfehler</legend>
+          <label><input type="radio" name="err" value="0"> Aus</label>
+          <label><input type="radio" name="err" value="0.04"> Selten</label>
+          <label><input type="radio" name="err" value="0.08" checked> Normal</label>
+          <label><input type="radio" name="err" value="0.15"> Häufig</label></fieldset>
+        <fieldset><legend>Sprachausgabe</legend>
+          <label><input type="radio" name="tts" value="1" checked> An</label>
+          <label><input type="radio" name="tts" value="0"> Aus</label></fieldset>
+      </div>
+      <div class="start-actions">
+        <button id="btnTutorial" class="ghost">Tutorial spielen</button>
+        <button id="btnStart" class="primary">Schicht starten</button>
+      </div>
+      <p id="highscore" class="muted small"></p>
+    </div>
+  </div>
+
+  <!-- Hilfe -->
+  <div id="help" class="modal" hidden>
+    <div class="modal-card help-card">
+      <div class="help-head"><h2>Befehle und Bedienung</h2><button id="helpClose" class="ghost">Schließen</button></div>
+      <div id="helpBody" class="help-body"></div>
+    </div>
+  </div>
+
+  <!-- Schichtende -->
+  <div id="end" class="modal" hidden>
+    <div class="modal-card end-card" id="endBody"></div>
+  </div>
+
+  <script src="js/util.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/airport.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/radio.js"></script>
+  <script src="js/aircraft.js"></script>
+  <script src="js/sim.js"></script>
+  <script src="js/commands.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/tutorial.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
